@@ -1,0 +1,33 @@
+Here is the categorized list of grocery items:
+
+
+**Dairy**
+
+1. Cheddar cheese
+2. Eggs
+3. Milk
+
+
+**Meat**
+
+1. Chicken breast
+
+
+**Produce**
+
+1. Apples
+2. Basil
+3. Spinach
+4. Tomato
+
+
+**Grains**
+
+1. Bread
+2. Pasta
+
+
+**Spices**
+
+1. Pepper
+2. Salt
