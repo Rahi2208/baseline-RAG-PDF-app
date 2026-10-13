@@ -1,0 +1,23 @@
+# theme for the streamlit frontend (src/ai_apps/streamlit.py)
+# users switch light/dark from the ⋮ menu -> Settings; default follows the OS
+
+[theme]
+font = "sans-serif"
+headingFontWeights = [800, 700, 700]
+baseRadius = "none"
+buttonRadius = "none"
+showWidgetBorder = true
+
+[theme.light]
+primaryColor = "#1F4FFF"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F2F2F2"
+textColor = "#0A0A0A"
+borderColor = "#0A0A0A"
+
+[theme.dark]
+primaryColor = "#4D7CFF"
+backgroundColor = "#0B0B0C"
+secondaryBackgroundColor = "#17171A"
+textColor = "#F5F5F5"
+borderColor = "#3A3A40"

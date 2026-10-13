@@ -1,3 +1,25 @@
+<<<<<<< HEAD
 venv/
 __pycache__/
 .env
+=======
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# uploaded PDFs from the streamlit app
+uploads/
+
+# secrets (API keys)
+.env
+
+# local qdrant database (contains text from your PDFs)
+qdrant_storage/
+>>>>>>> 1948e8d (PDF-RAG)
