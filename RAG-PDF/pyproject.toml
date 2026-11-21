@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.143.0",
+    "fastembed>=0.9.1",
     "inngest>=0.5.19",
     "llama-index-core>=0.14.25",
     "llama-index-readers-file>=0.7.0",
@@ -25,3 +26,8 @@ ai-apps = "ai_apps:main"
 [build-system]
 requires = ["uv_build>=0.12.23,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.uv]
+# nltk >= 3.10 refuses to open hardlinked files, and uv hardlinks installed packages by default.
+# llama-index's sentence splitter reads nltk data, so without this ingest crashes on long pdf pages.
+link-mode = "copy"

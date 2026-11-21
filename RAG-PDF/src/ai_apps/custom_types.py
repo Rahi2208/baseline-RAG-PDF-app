@@ -2,6 +2,7 @@ from pydantic import BaseModel
 
 class RAGChunkAndSrc(BaseModel): 
     chunks: list[str] 
+    pages: list[str] = []
     source_id: str 
 
 class RAGUpsertResult(BaseModel): 

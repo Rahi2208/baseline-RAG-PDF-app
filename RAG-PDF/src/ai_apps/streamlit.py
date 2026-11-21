@@ -1,18 +1,16 @@
 #frontend for the RAG app: upload pdf -> rag/ingest_pdf, ask question -> rag/query_pdf
 #run: streamlit run src/ai_apps/streamlit.py  (fastapi + inngest dev server must be running)
-import os
-import time
 from pathlib import Path
 
-import httpx
 import inngest
 import streamlit as st
 from dotenv import load_dotenv
 
+from ai_apps.inngest_wait import wait_for_output
+
 load_dotenv()
 
 UPLOAD_DIR = Path('uploads')
-INNGEST_API = os.getenv('INNGEST_API_BASE', 'http://127.0.0.1:8288/v1')
 
 st.set_page_config(page_title='RAG PDF', page_icon='📄', layout='centered')
 
@@ -26,24 +24,6 @@ def get_inngest_client() -> inngest.Inngest:
 def send_event(name: str, data: dict) -> str:
     ids = get_inngest_client().send_sync(inngest.Event(name=name, data=data))
     return ids[0]
-
-
-def wait_for_output(event_id: str, timeout: float = 120.0) -> dict:
-    #ask the inngest dev server for the run triggered by this event until it finishes
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        resp = httpx.get(f'{INNGEST_API}/events/{event_id}/runs', timeout=10)
-        resp.raise_for_status()
-        runs = resp.json().get('data', [])
-        if runs:
-            run = runs[0]
-            status = run.get('status')
-            if status == 'Completed':
-                return run.get('output') or {}
-            if status in ('Failed', 'Cancelled'):
-                raise RuntimeError(f'Run {status.lower()}: {run.get("output")}')
-        time.sleep(0.5)
-    raise TimeoutError('No answer from Inngest in time. Is the FastAPI server running?')
 
 
 def save_upload(file) -> Path:
@@ -77,7 +57,7 @@ st.divider()
 st.header('2 · Ask a question')
 with st.form('ask'):
     question = st.text_input('Your question', placeholder='What is this document about?')
-    top_k = st.number_input('Chunks to retrieve', min_value=1, max_value=20, value=5, step=1)
+    top_k = st.number_input('Chunks to retrieve', min_value=1, max_value=20, value=8, step=1)
     asked = st.form_submit_button('Ask', type='primary')
 
 if asked:

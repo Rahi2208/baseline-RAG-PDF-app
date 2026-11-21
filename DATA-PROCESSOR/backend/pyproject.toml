@@ -1,0 +1,38 @@
+[project]
+name = "data-agent"
+version = "0.1.0"
+description = "Agent that turns raw data into tables following a guide"
+readme = "README.md"
+authors = [
+    { name = "Rahi", email = "rahirahmani2008@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.143.3",
+    "httpx>=0.28.1",
+    "inngest>=0.5.19",
+    "numpy>=2.5.4",
+    "ollama>=0.6.3",
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.6",
+    "pymupdf>=1.28.2",
+    "python-dotenv>=1.2.4",
+    "python-multipart>=0.0.32",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+data-agent = "data_agent.cli:main"
+data-agent-eval = "data_agent.evaluate:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -10,6 +10,7 @@ import asyncio #to run blocking code (openai, qdrant) in a thread
 from typing import Any
 from ai_apps.data_loader import load_and_chunk_pdf, create_embeddings
 from ai_apps.vector_db import QdrantStorage
+from ai_apps.settings import llm_config
 from ai_apps.custom_types import RAGChunkAndSrc, RAGUpsertResult, RAGSearchResult
 
 load_dotenv() #load .env 
@@ -38,7 +39,7 @@ async def rag_query_ai_pdf(ctx: inngest.Context):
         return RAGSearchResult(contexts=found['context'], sources=found['sources'])
 
     question = str(ctx.event.data.get('question', ''))
-    top_k = int(str(ctx.event.data.get('top_k', 5)))
+    top_k = int(str(ctx.event.data.get('top_k', 8)))
     found = await ctx.step.run('embed_and_search', _search, question, top_k, output_type=RAGSearchResult)
 
     #prompt for user 
@@ -50,17 +51,19 @@ async def rag_query_ai_pdf(ctx: inngest.Context):
         'Answer concisely using the context above' 
     )
 
-    #communicate with openai api 
-    #adapter = as a identity of the ai that we use 
-    adapter = ai.openai.Adapter(auth_key= os.environ['OPENAI_API_KEY'],
-                                model = 'gpt-4o-mini')
+    #chat model (groq / openai) comes from .env, see settings.py
+    try:
+        cfg = llm_config()
+    except ValueError as e:
+        raise inngest.NonRetriableError(str(e))  #retrying will not fix a missing key
+    adapter = ai.openai.Adapter(auth_key=cfg['auth_key'], base_url=cfg['base_url'], model=cfg['model'])
 
     #call LLM model and give answer 
     res: Any = await ctx.step.ai.infer(
         'llm-answer', 
         adapter = adapter ,
         body= { 
-            'max_tokens': 1024, 
+            'max_tokens': 2048, #reasoning models (gpt-oss) spend part of this budget on thinking 
             'temperature': 0.1, 
             'messages': [
                 {'role':'system', 'content': 'answer only using the provided context. '}, 
@@ -69,7 +72,7 @@ async def rag_query_ai_pdf(ctx: inngest.Context):
         }
     )
     
-    answer = res["choices"][0]['message']['content'].strip() 
+    answer = (res["choices"][0]['message'].get('content') or '').strip() or '(the model returned an empty answer)'
     return {'answer': answer, 'sources': found.sources, 'num_context': len(found.contexts)} 
 
 # load pdf, chunking, embed, store in db  
@@ -79,16 +82,21 @@ async def rag_query_ai_pdf(ctx: inngest.Context):
 )
 async def rag_ingest_pdf(ctx: inngest.Context): 
     async def _load(pdf_path: str, source_id: str) -> RAGChunkAndSrc:
-        chunks = await asyncio.to_thread(load_and_chunk_pdf, pdf_path)
-        return RAGChunkAndSrc(chunks=chunks, source_id=source_id)
+        chunks, pages = await asyncio.to_thread(load_and_chunk_pdf, pdf_path)
+        return RAGChunkAndSrc(chunks=chunks, pages=pages, source_id=source_id)
 
     async def _upsert(chunk_and_src: RAGChunkAndSrc) -> RAGUpsertResult:
         chunks = chunk_and_src.chunks
         source_id = chunk_and_src.source_id
         vecs = await asyncio.to_thread(create_embeddings, chunks)
         ids = [str(uuid.uuid5(uuid.NAMESPACE_URL, f"{source_id}:{i}")) for i in range(len(chunks))]
-        payloads = [{'source': source_id, 'text': chunks[i]} for i in range(len(chunks))]
-        await asyncio.to_thread(lambda: QdrantStorage().upsert(ids, vecs, payloads))
+        pages = chunk_and_src.pages
+        payloads = [{'source': source_id, 'page': pages[i] if i < len(pages) else None, 'text': chunks[i]} for i in range(len(chunks))]
+        def _replace():
+            store = QdrantStorage()
+            store.delete_source(source_id) #drop old version of this pdf first
+            store.upsert(ids, vecs, payloads)
+        await asyncio.to_thread(_replace)
         return RAGUpsertResult(ingested=len(chunks))
 
     pdf_path = ctx.event.data.get('pdf_path')
